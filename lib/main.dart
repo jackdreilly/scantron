@@ -125,11 +125,11 @@ class App extends StatelessWidget {
                                                 .instance.currentUser?.uid)
                                             .collection('private')
                                             .doc('private')
-                                            .update({
+                                            .set({
                                           'token': await FirebaseMessaging
                                               .instance
                                               .getToken()
-                                        });
+                                        }, SetOptions(merge: true));
                                       },
                                     ),
                                   ))
