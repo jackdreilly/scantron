@@ -3,7 +3,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +11,8 @@ import 'package:flutterfire_ui/auth.dart';
 import 'firebase_options.dart';
 
 final coll = FirebaseFirestore.instance.collection('scanlets');
+final functions =
+    FirebaseFunctions.instanceFor(app: Firebase.app(), region: "europe-west3");
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,7 @@ void main() async {
     FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
     await FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
     await FirebaseStorage.instance.useStorageEmulator('127.0.0.1', 9199);
-    FirebaseFunctions.instance.useFunctionsEmulator('127.0.0.1', 5001);
+    functions.useFunctionsEmulator('127.0.0.1', 5001);
   }
   runApp(const MyApp());
 }
@@ -93,7 +94,7 @@ class App extends StatelessWidget {
                           leading: IconButton(
                             icon: const Icon(Icons.add),
                             onPressed: () async {
-                              final x = await FirebaseFunctions.instance
+                              final x = await functions
                                   .httpsCallable("helloWorld")
                                   .call();
                               print(x.data);

@@ -24,6 +24,11 @@
     ],
     "rewrites": [
       {
+        "source": "/helloWorld",
+        "function": "helloWorld",
+        "region": "europe-west3"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
