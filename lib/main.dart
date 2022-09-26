@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ void main() async {
     await FirebaseStorage.instance.useStorageEmulator('127.0.0.1', 9199);
     functions.useFunctionsEmulator('127.0.0.1', 5001);
   }
+  FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
   runApp(const MyApp());
 }
 
@@ -83,34 +85,59 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: coll.snapshots(),
-        builder: (context, snapshot) => ListView(
-            children: snapshot.data?.docs
-                    .map((e) => ListTile(
-                          title: Text(e.data()['title'] ?? "Missing"),
-                          onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      ScanletPage(scanlet: e.reference))),
-                          leading: IconButton(
-                            icon: const Icon(Icons.add),
-                            onPressed: () async {
-                              final x = await functions
-                                  .httpsCallable("helloWorld")
-                                  .call();
-                              print(x.data);
-                              final task = FirebaseStorage.instance
-                                  .ref("${e.id}/item")
-                                  .putString("holy moses");
-                              final state = await task.asStream().firstWhere(
-                                  (element) =>
-                                      element.state == TaskState.success);
-                              await e.reference
-                                  .update({'item': state.ref.fullPath});
-                            },
-                          ),
-                        ))
-                    .toList() ??
-                []));
+        builder: (context, snapshot) => Column(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                ElevatedButton(
+                    onPressed: () => coll.add({
+                          'title': DateTime.now().toIso8601String(),
+                          'user': FirebaseAuth.instance.currentUser?.uid
+                        }),
+                    child: const Text("Add")),
+                Expanded(
+                  child: ListView(
+                      children: snapshot.data?.docs
+                              .map((e) => ListTile(
+                                    title: Text(e.data()['title'] ?? "Missing"),
+                                    onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                            builder: (context) => ScanletPage(
+                                                scanlet: e.reference))),
+                                    leading: IconButton(
+                                      icon: const Icon(Icons.add),
+                                      onPressed: () async {
+                                        await functions
+                                            .httpsCallable("helloWorld")
+                                            .call();
+                                        final task = FirebaseStorage.instance
+                                            .ref("${e.id}/item")
+                                            .putString("holy moses");
+                                        final state = await task
+                                            .asStream()
+                                            .firstWhere((element) =>
+                                                element.state ==
+                                                TaskState.success);
+                                        await e.reference.update(
+                                            {'item': state.ref.fullPath});
+                                        await FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(FirebaseAuth
+                                                .instance.currentUser?.uid)
+                                            .collection('private')
+                                            .doc('private')
+                                            .update({
+                                          'token': await FirebaseMessaging
+                                              .instance
+                                              .getToken()
+                                        });
+                                      },
+                                    ),
+                                  ))
+                              .toList() ??
+                          []),
+                ),
+              ],
+            ));
   }
 }
 
@@ -138,5 +165,15 @@ class ScanletPage extends StatelessWidget {
             ),
           );
         });
+  }
+}
+
+Future<void> handleBackgroundMessage(RemoteMessage message) async {
+  if (kDebugMode) {
+    print(message);
+    print('was here!!!!');
+    print(message.data);
+    print(message.from);
+    print(message.sentTime);
   }
 }
