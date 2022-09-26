@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -41,6 +42,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       initialRoute:
           FirebaseAuth.instance.currentUser == null ? '/sign-in' : '/profile',
+      navigatorObservers: [
+        FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance)
+      ],
       routes: {
         '/sign-in': (context) {
           return SignInScreen(
