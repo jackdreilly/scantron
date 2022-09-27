@@ -30,10 +30,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   if (kDebugMode) {
-    FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
-    await FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
-    await FirebaseStorage.instance.useStorageEmulator('127.0.0.1', 9199);
-    functions.useFunctionsEmulator('127.0.0.1', 5001);
+    const emulatorHost = '127.0.0.1';
+    FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8080);
+    await FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9099);
+    await FirebaseStorage.instance.useStorageEmulator(emulatorHost, 9199);
+    functions.useFunctionsEmulator(emulatorHost, 5001);
   }
   FirebaseMessaging.onBackgroundMessage(handleMessage);
   FirebaseMessaging.onMessage.forEach(handleMessage);
