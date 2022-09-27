@@ -1,5 +1,7 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:collection/collection.dart';
@@ -364,80 +366,85 @@ class _NewScanletPageState extends State<NewScanletPage> {
   Widget build(BuildContext context) {
     final user = getUser(context);
     return Scaffold(
-      appBar: AppBar(title: Text("New Scanlet")),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (loading)
-              LinearProgressIndicator(value: progress < 1 ? progress : null),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(label: Text("Scanlet Name")),
-            ),
-            Text("Markdown (links, description...)"),
-            SafeArea(
-              child: SizedBox(
-                height: 500,
-                child: MarkdownFormField(
-                  controller: markdownController,
-                  enableToolBar: true,
-                  emojiConvert: true,
-                  autoCloseAfterSelectEmoji: false,
-                ),
+        appBar: AppBar(title: Text("New Scanlet")),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxWidth: max(560, MediaQuery.of(context).size.width / 3)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (loading)
+                    LinearProgressIndicator(
+                        value: progress < 1 ? progress : null),
+                  TextField(
+                    controller: controller,
+                    decoration: InputDecoration(label: Text("Scanlet Name")),
+                  ),
+                  Text("Markdown (links, description...)"),
+                  Expanded(
+                    child: Card(
+                      child: MarkdownFormField(
+                        controller: markdownController,
+                        enableToolBar: true,
+                        emojiConvert: true,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                          onPressed: () => FilePicker.platform.pickFiles().then(
+                              (value) => setState(
+                                  () => files.addAll(value?.files ?? []))),
+                          icon: Icon(Icons.file_upload),
+                          label: Text("Upload Files")),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text("${files.length} files selected"),
+                      ),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                      onPressed: () async {
+                        setState(() {
+                          loading = true;
+                        });
+                        final navigator = Navigator.of(context);
+                        final ref = await coll.add({
+                          'title': controller.text,
+                          'userDisplay': user?.displayName ?? user?.email,
+                          'user_id': user?.uid,
+                          'created_at':
+                              DateTime.now().toUtc().toIso8601String(),
+                          'markdown': markdownController.text,
+                        });
+                        final uploads = await Future.wait(
+                            files.mapIndexed((index, element) async {
+                          final storageRef = FirebaseStorage.instance
+                              .ref()
+                              .child("scanlets")
+                              .child(ref.id)
+                              .child('uploads')
+                              .child(index.toString())
+                              .child(element.name);
+                          final lastEvent = await storageRef
+                              .putData(element.bytes ?? Uint8List.fromList([]));
+                          return lastEvent.ref.fullPath;
+                        }));
+                        await ref.update({'uploads': uploads});
+                        await navigator.pushReplacement(MaterialPageRoute(
+                            builder: (context) => ScanletPage(ref)));
+                      },
+                      label: Text("Create Scanlet"),
+                      icon: Icon(Icons.create))
+                ].separatedBy(SizedBox(height: 10)).toList(),
               ),
             ),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                    onPressed: () => FilePicker.platform.pickFiles().then(
-                        (value) =>
-                            setState(() => files.addAll(value?.files ?? []))),
-                    icon: Icon(Icons.file_upload),
-                    label: Text("Upload Files")),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text("${files.length} files selected"),
-                ),
-              ],
-            ),
-            ElevatedButton.icon(
-                onPressed: () async {
-                  setState(() {
-                    loading = true;
-                  });
-                  final navigator = Navigator.of(context);
-                  final ref = await coll.add({
-                    'title': controller.text,
-                    'userDisplay': user?.displayName ?? user?.email,
-                    'user_id': user?.uid,
-                    'created_at': DateTime.now().toUtc().toIso8601String(),
-                    'markdown': markdownController.text,
-                  });
-                  final uploads = await Future.wait(
-                      files.mapIndexed((index, element) async {
-                    final storageRef = FirebaseStorage.instance
-                        .ref()
-                        .child("scanlets")
-                        .child(ref.id)
-                        .child('uploads')
-                        .child(index.toString())
-                        .child(element.name);
-                    final lastEvent = await storageRef
-                        .putData(element.bytes ?? Uint8List.fromList([]));
-                    return lastEvent.ref.fullPath;
-                  }));
-                  await ref.update({'uploads': uploads});
-                  await navigator.pushReplacement(MaterialPageRoute(
-                      builder: (context) => ScanletPage(ref)));
-                },
-                label: Text("Create Scanlet"),
-                icon: Icon(Icons.create))
-          ].separatedBy(SizedBox(height: 10)).toList(),
-        ),
-      ),
-    );
+          ),
+        ));
   }
 }
 
