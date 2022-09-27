@@ -96,32 +96,39 @@ class LoginPage extends StatelessWidget {
       appBar: AppBar(
         title: Text("Login"),
       ),
-      body: Column(
-        children: [
-          ElevatedButton.icon(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => RegisterPage())),
-              icon: Icon(Icons.person_add),
-              label: Text("Register New Account")),
-          TextField(
-            controller: controller1,
-            decoration: InputDecoration(label: Text("Email")),
+      body: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              ElevatedButton.icon(
+                  onPressed: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (context) => RegisterPage())),
+                  icon: Icon(Icons.person_add),
+                  label: Text("Register New Account")),
+              TextField(
+                controller: controller1,
+                decoration: InputDecoration(label: Text("Email")),
+              ),
+              TextField(
+                controller: controller2,
+                decoration: InputDecoration(label: Text("Password")),
+              ),
+              ElevatedButton.icon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    await FirebaseAuth.instance.signInWithEmailAndPassword(
+                        email: controller1.text, password: controller2.text);
+                    await updateToken();
+                    goHome(navigator);
+                  },
+                  icon: Icon(Icons.login),
+                  label: Text("Login"))
+            ].separatedBy(SizedBox(height: 10)).toList(),
           ),
-          TextField(
-            controller: controller2,
-            decoration: InputDecoration(label: Text("Password")),
-          ),
-          ElevatedButton.icon(
-              onPressed: () async {
-                final navigator = Navigator.of(context);
-                await FirebaseAuth.instance.signInWithEmailAndPassword(
-                    email: controller1.text, password: controller2.text);
-                await updateToken();
-                navigator.popUntil((route) => route.isFirst);
-              },
-              icon: Icon(Icons.login),
-              label: Text("Login"))
-        ],
+        ),
       ),
     );
   }
@@ -138,29 +145,40 @@ class RegisterPage extends StatelessWidget {
       appBar: AppBar(
         title: Text("Register account"),
       ),
-      body: Column(
-        children: [
-          TextField(
-            controller: controller1,
-            decoration: InputDecoration(label: Text("Email")),
+      body: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextField(
+                controller: controller1,
+                decoration: InputDecoration(label: Text("Email")),
+              ),
+              TextField(
+                controller: controller2,
+                decoration: InputDecoration(label: Text("Password")),
+              ),
+              ElevatedButton.icon(
+                  onPressed: () => FirebaseAuth.instance
+                      .createUserWithEmailAndPassword(
+                          email: controller1.text, password: controller2.text)
+                    ..then((_) => updateToken())
+                        .then((value) => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProfilePage(),
+                            ))),
+                  icon: Icon(Icons.check),
+                  label: Text("Submit"))
+            ]
+                .separatedBy(SizedBox(
+                  height: 10,
+                ))
+                .toList(),
           ),
-          TextField(
-            controller: controller2,
-            decoration: InputDecoration(label: Text("Password")),
-          ),
-          ElevatedButton.icon(
-              onPressed: () => FirebaseAuth.instance
-                  .createUserWithEmailAndPassword(
-                      email: controller1.text, password: controller2.text)
-                ..then((_) => updateToken())
-                    .then((value) => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProfilePage(),
-                        ))),
-              icon: Icon(Icons.check),
-              label: Text("Submit"))
-        ],
+        ),
       ),
     );
   }
@@ -249,7 +267,7 @@ class ProfilePage extends StatelessWidget {
                   onPressed: () async {
                     final navigator = Navigator.of(context);
                     await FirebaseAuth.instance.signOut();
-                    navigator.popUntil((route) => route.isFirst);
+                    goHome(navigator);
                   },
                   icon: Icon(Icons.logout),
                   label: Text("Logout"))
@@ -312,10 +330,9 @@ class CreateScanletItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = getUser(context);
-    return ElevatedButton.icon(
+    return ElevatedButton(
       style: ElevatedButton.styleFrom(backgroundColor: Colors.lightGreen),
-      icon: Icon(Icons.create),
-      label: Text("Create"),
+      child: Icon(Icons.edit),
       onPressed: () => user != null
           ? Navigator.push(context,
               MaterialPageRoute(builder: (context) => NewScanletPage()))
@@ -391,7 +408,7 @@ class _NewScanletPageState extends State<NewScanletPage> {
                   final ref = await coll.add({
                     'title': controller.text,
                     'userDisplay': user?.displayName ?? user?.email,
-                    'user': user?.uid,
+                    'user_id': user?.uid,
                     'created_at': DateTime.now().toUtc().toIso8601String(),
                     'markdown': markdownController.text,
                   });
@@ -468,14 +485,27 @@ class ScanletPage extends StatelessWidget {
                             "Author: ${scanlet.data()?['userDisplay'] ?? 'missing'}"),
                         Text(
                             "Created At: ${scanlet.data()?['created_at'] ?? 'missing'}"),
-                        ElevatedButton.icon(
-                            onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        ScanletCommentsPage(reference))),
-                            icon: Icon(Icons.comment),
-                            label: Text("Comments")),
+                        Row(
+                          children: <Widget>[
+                            ElevatedButton.icon(
+                                onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            ScanletCommentsPage(reference))),
+                                icon: Icon(Icons.comment),
+                                label: Text("Comments")),
+                            if (scanlet.isUser(context: context))
+                              ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final navigator = Navigator.of(context);
+                                    await reference.delete();
+                                    goHome(navigator);
+                                  },
+                                  icon: Icon(Icons.delete),
+                                  label: Text("Delete"))
+                          ].separatedBy(SizedBox(width: 10)).toList(),
+                        ),
                         Card(
                           child: Markdown(
                             data: scanlet.data()?['markdown'] ?? '',
@@ -509,6 +539,10 @@ class ScanletPage extends StatelessWidget {
   }
 }
 
+goHome(NavigatorState navigator) {
+  navigator.popUntil((e) => e.isFirst);
+}
+
 class ScanletCommentsPage extends StatefulWidget {
   final DocumentReference reference;
 
@@ -535,6 +569,7 @@ class _ScanletCommentsPageState extends State<ScanletCommentsPage> {
                   comments.add({
                     'comment': controller.text,
                     'userDisplay': user?.displayName ?? user?.email,
+                    'user_id': user?.uid,
                     'created_at': DateTime.now().toUtc().toIso8601String(),
                   });
                   controller.text = "";
@@ -557,6 +592,11 @@ class _ScanletCommentsPageState extends State<ScanletCommentsPage> {
                                     Text(e.data()['userDisplay'] ?? 'no user'),
                                 subtitle:
                                     Text(e.data()['created_at'] ?? 'no date'),
+                                trailing: e.isUser(user: user)
+                                    ? IconButton(
+                                        onPressed: () => e.reference.delete(),
+                                        icon: Icon(Icons.delete))
+                                    : null,
                               ))
                           .toList() ??
                       []),
@@ -596,5 +636,14 @@ extension<T> on Iterable<T> {
       yield separator;
       yield v;
     }
+  }
+}
+
+extension on DocumentSnapshot<Map<String, dynamic>> {
+  bool isUser({User? user, BuildContext? context}) {
+    if (context != null) {
+      user ??= getUser(context);
+    }
+    return user != null && user.uid == data()?['user_id'];
   }
 }

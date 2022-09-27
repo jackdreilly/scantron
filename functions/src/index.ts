@@ -1,5 +1,5 @@
 import * as admin from "firebase-admin";
-import {firestore, messaging} from "firebase-admin";
+import {firestore, messaging, storage} from "firebase-admin";
 import * as functions from "firebase-functions";
 admin.initializeApp();
 
@@ -14,6 +14,30 @@ export const onScanletCreated = region.firestore
         body: snapshot.data()?.title ?? "no title",
       })
     );
+
+export const onScanletDeleted = region.firestore.document(
+    "scanlets/{scanlet_id}",
+).onDelete(async (snapshot) => {
+  const scanlet = snapshot.ref.path;
+  await storage().bucket().deleteFiles({
+    autoPaginate: true,
+    prefix: scanlet,
+  });
+  functions.logger.info({scanlet, action: "deleted storage"});
+  const comments = await snapshot.ref.collection("comments").listDocuments();
+  functions.logger.info({
+    scanlet,
+    action: "deleting comments",
+    n_comments: comments.length,
+  });
+  const responses = await Promise.all(comments.map((d) => d.delete()));
+  functions.logger.info({
+    scanlet,
+    action: "deleted comments",
+    n_comments: comments.length,
+    responses: responses.map((w) => w.writeTime.toDate().toISOString()),
+  });
+});
 
 /**
  * Blasts notifications to everyone.

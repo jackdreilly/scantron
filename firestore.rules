@@ -8,8 +8,10 @@ service cloud.firestore {
     match /scanlets/{scanlet_id} {
       allow read;
       allow write: if request.auth != null;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.user_id;
       match /comments/{comment_id} {
         allow read, create;
+        allow delete: if request.auth != null && request.auth.uid == resource.data.user_id;
       }
     }
   }
