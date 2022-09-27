@@ -1,6 +1,5 @@
 // ignore_for_file: prefer_const_constructors
 
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:collection/collection.dart';
@@ -38,24 +37,7 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(handleMessage);
   FirebaseMessaging.onMessage.forEach(handleMessage);
   FirebaseMessaging.onMessageOpenedApp.forEach(handleMessage);
-  if (kDebugMode) {
-    runApp(const MyApp());
-  } else {
-    try {
-      await SentryFlutter.init(
-        (options) {
-          options.dsn =
-              'https://55c293caeebb4f9da34c82d6a0c2f1a5@o1428303.ingest.sentry.io/6778444';
-          // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
-          // We recommend adjusting this value in production.
-          options.tracesSampleRate = 1.0;
-        },
-        appRunner: () => runApp(MyApp()),
-      );
-    } catch (e) {
-      runApp(const MyApp());
-    }
-  }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -82,7 +64,6 @@ class MyApp extends StatelessWidget {
                   : [
                       FirebaseAnalyticsObserver(
                           analytics: FirebaseAnalytics.instance),
-                      SentryNavigatorObserver(),
                     ],
               home: MultiProvider(providers: [
                 StreamProvider<User?>(
