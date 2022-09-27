@@ -540,7 +540,12 @@ class ScanletPage extends StatelessWidget {
                                             'gif'
                                           ].any((suffix) =>
                                               e.toString().endsWith(suffix)))
-                                            Image.network(snapshot.data!),
+                                            ConstrainedBox(
+                                                constraints: BoxConstraints(
+                                                    maxHeight: 500,
+                                                    maxWidth: 500),
+                                                child: Image.network(
+                                                    snapshot.data!)),
                                           if ([
                                             'wav',
                                             'mp3',
