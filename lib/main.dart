@@ -533,22 +533,26 @@ class ScanletPage extends StatelessWidget {
                                                 launchUrlString(snapshot.data!);
                                               },
                                               icon: Icon(Icons.download)),
-                                          ['jpeg', 'jpg', 'png'].any((suffix) =>
-                                                  e.toString().endsWith(suffix))
-                                              ? Image.network(snapshot.data!)
-                                              : ['wav', 'mp3', 'mp4'].any(
-                                                      (suffix) => e
-                                                          .toString()
-                                                          .endsWith(suffix))
-                                                  ? Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        AudioWidget(
-                                                            snapshot.data!),
-                                                      ],
-                                                    )
-                                                  : Container(),
+                                          if ([
+                                            'jpeg',
+                                            'jpg',
+                                            'png',
+                                            'gif'
+                                          ].any((suffix) =>
+                                              e.toString().endsWith(suffix)))
+                                            Image.network(snapshot.data!),
+                                          if ([
+                                            'wav',
+                                            'mp3',
+                                            'mp4'
+                                          ].any((suffix) =>
+                                              e.toString().endsWith(suffix)))
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                AudioWidget(snapshot.data!),
+                                              ],
+                                            ),
                                           Text(e.toString().split('/').last)
                                         ],
                                       )))

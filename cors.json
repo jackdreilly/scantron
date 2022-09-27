@@ -1,0 +1,11 @@
+[
+    {
+        "origin": [
+            "https://scantron.reillybrothers.net"
+        ],
+        "method": [
+            "GET"
+        ],
+        "maxAgeSeconds": 3600
+    }
+]
