@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+
 import 'markdown_field.dart';
-import 'markdown_parse.dart';
 import 'markdown_toolbar.dart';
 
 class MarkdownFormField extends StatefulWidget {

@@ -487,6 +487,14 @@ class ScanletPage extends StatelessWidget {
                             "Author: ${scanlet.data()?['userDisplay'] ?? 'missing'}"),
                         Text(
                             "Created At: ${scanlet.data()?['created_at'] ?? 'missing'}"),
+                        ElevatedButton.icon(
+                            onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        ScanletCommentsPage(reference))),
+                            icon: Icon(Icons.comment),
+                            label: Text("Comments")),
                         Card(
                           child: Markdown(
                             data: scanlet.data()?['markdown'] ?? '',
@@ -517,6 +525,65 @@ class ScanletPage extends StatelessWidget {
                 ),
               ));
         });
+  }
+}
+
+class ScanletCommentsPage extends StatefulWidget {
+  final DocumentReference reference;
+
+  const ScanletCommentsPage(this.reference, {super.key});
+
+  @override
+  State<ScanletCommentsPage> createState() => _ScanletCommentsPageState();
+}
+
+class _ScanletCommentsPageState extends State<ScanletCommentsPage> {
+  final controller = TextEditingController();
+  CollectionReference get comments => widget.reference.collection('comments');
+  @override
+  Widget build(BuildContext context) {
+    final user = getUser(context);
+    return Scaffold(
+      appBar: AppBar(title: Text("Comments")),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            TextField(
+                onSubmitted: (value) {
+                  comments.add({
+                    'comment': controller.text,
+                    'userDisplay': user?.displayName ?? user?.email,
+                    'created_at': DateTime.now().toUtc().toIso8601String(),
+                  });
+                  controller.text = "";
+                },
+                controller: controller,
+                decoration: InputDecoration(label: Text("New Comment"))),
+            Expanded(
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: widget.reference
+                  .collection('comments')
+                  .orderBy('created_at', descending: true)
+                  .snapshots(),
+              initialData: null,
+              builder: (context, snapshot) => ListView(
+                  children: snapshot.data?.docs
+                          .map((e) => ListTile(
+                                title:
+                                    Text(e.data()['comment'] ?? 'no comment'),
+                                leading:
+                                    Text(e.data()['userDisplay'] ?? 'no user'),
+                                subtitle:
+                                    Text(e.data()['created_at'] ?? 'no date'),
+                              ))
+                          .toList() ??
+                      []),
+            ))
+          ],
+        ),
+      ),
+    );
   }
 }
 
