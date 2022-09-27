@@ -12,6 +12,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:scantron/markdown_editor/widgets/markdown_form_field.dart';
@@ -390,7 +391,8 @@ class _NewScanletPageState extends State<NewScanletPage> {
               children: [
                 ElevatedButton.icon(
                     onPressed: () => FilePicker.platform.pickFiles().then(
-                        (value) => setState(() => files = value?.files ?? [])),
+                        (value) =>
+                            setState(() => files.addAll(value?.files ?? []))),
                     icon: Icon(Icons.file_upload),
                     label: Text("Upload Files")),
                 Padding(
@@ -515,19 +517,41 @@ class ScanletPage extends StatelessWidget {
                           ),
                         ),
                         Text("Uploads"),
-                        ...((scanlet.data()?['uploads'] ?? []))
-                            .map((e) => ListTile(
-                                  title: Text(e.toString()),
-                                  leading: IconButton(
-                                      onPressed: () async {
-                                        final url = await FirebaseStorage
-                                            .instance
-                                            .ref(e.toString())
-                                            .getDownloadURL();
-                                        launchUrlString(url);
-                                      },
-                                      icon: Icon(Icons.download)),
-                                ))
+                        ...(scanlet.data()?['uploads'] ?? []).map((e) =>
+                            FutureBuilder<String>(
+                                future: FirebaseStorage.instance
+                                    .ref(e.toString())
+                                    .getDownloadURL(),
+                                builder: (context, snapshot) => snapshot.data ==
+                                        null
+                                    ? Container()
+                                    : Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                              onPressed: () {
+                                                launchUrlString(snapshot.data!);
+                                              },
+                                              icon: Icon(Icons.download)),
+                                          ['jpeg', 'jpg', 'png'].any((suffix) =>
+                                                  e.toString().endsWith(suffix))
+                                              ? Image.network(snapshot.data!)
+                                              : ['wav', 'mp3', 'mp4'].any(
+                                                      (suffix) => e
+                                                          .toString()
+                                                          .endsWith(suffix))
+                                                  ? Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        AudioWidget(
+                                                            snapshot.data!),
+                                                      ],
+                                                    )
+                                                  : Container(),
+                                          Text(e.toString().split('/').last)
+                                        ],
+                                      )))
                       ]
                           .separatedBy(SizedBox(
                             height: 10,
@@ -536,6 +560,37 @@ class ScanletPage extends StatelessWidget {
                 ),
               ));
         });
+  }
+}
+
+class AudioWidget extends StatefulWidget {
+  final String url;
+  const AudioWidget(this.url, {super.key});
+
+  @override
+  State<AudioWidget> createState() => _AudioWidgetState();
+}
+
+class _AudioWidgetState extends State<AudioWidget> {
+  final player = AudioPlayer();
+  bool playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    player.setUrl(widget.url);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+        onPressed: () {
+          playing ? player.pause() : player.play();
+          setState(() {
+            playing = !playing;
+          });
+        },
+        icon: Icon(playing ? Icons.pause : Icons.play_arrow));
   }
 }
 
